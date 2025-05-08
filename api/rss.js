@@ -20,21 +20,20 @@ export default async function handler(req, res) {
   const rssItems = data
     .map((item) => `
       <item>
-        <title>New sticker from ${item.clubs.name}</title>
+        <title>${item.clubs.name}</title>
         <description><![CDATA[
-          <img src="${item.image_url}" alt="${item.clubs.name}" width="300"/><br/>
-          ${item.clubs.name}<br/>
           ✅ ${item.location}<br/>
           ${item.description}<br/>
           #️⃣ ${item.clubs.media}
         ]]></description>
         <pubDate>${new Date(item.created_at).toUTCString()}</pubDate>
         <guid>${item.id}</guid>
+        <enclosure url="${item.image_url}" type="image/jpeg" />
       </item>
     `)
     .join('');
 
-  const rss = `<?xml version="1.0"?>
+  const rss = `<?xml version="1.0" encoding="UTF-8" ?>
     <rss version="2.0">
       <channel>
         <title>New Stickers</title>
