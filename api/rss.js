@@ -22,6 +22,7 @@ export default async function handler(req, res) {
       <item>
         <title>${item.clubs.name}</title>
         <description><![CDATA[
+          ${item.clubs.name}<br/>
           ✅ ${item.location}<br/>
           ${item.description}<br/>
           #️⃣ ${item.clubs.media}
