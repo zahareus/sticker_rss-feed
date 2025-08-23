@@ -5,6 +5,9 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
+// HTML <br/> + LF код — одночасно перенос і в HTML, і в plain text
+const BREAK = '<br/>&#x0A;';
+
 const escapeXml = (str = '') =>
   str.replace(/&/g, '&amp;')
      .replace(/</g, '&lt;')
@@ -14,20 +17,20 @@ const escapeXml = (str = '') =>
 
 const normalizeText = (str = '') =>
   String(str)
-    .replace(/\r/g, '')       // прибрати CR
-    .replace(/\n{2,}/g, '\n') // звести мультипереноси до одного
+    .replace(/\r/g, '')
+    .replace(/\n{2,}/g, '\n')
     .trim();
 
 const buildDescription = (item) => {
   const lines = [
     item.clubs?.name,
     `✅ ${item.location}`,
-    normalizeText(item.description).replace(/\n/g, '<br/>'),
+    normalizeText(item.description).replace(/\n/g, BREAK),
     `#️⃣ ${item.clubs?.media}`
   ].filter(Boolean);
 
-  // Єдиний спосіб переносу — <br/>, без \n усередині CDATA
-  return lines.join('<br/>');
+  // об’єднання рядків через універсальний перенос
+  return lines.join(BREAK);
 };
 
 export default async function handler(req, res) {
