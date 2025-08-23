@@ -5,6 +5,31 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
+const escapeXml = (str = '') =>
+  str.replace(/&/g, '&amp;')
+     .replace(/</g, '&lt;')
+     .replace(/>/g, '&gt;')
+     .replace(/"/g, '&quot;')
+     .replace(/'/g, '&apos;');
+
+const normalizeText = (str = '') =>
+  String(str)
+    .replace(/\r/g, '')       // прибрати CR
+    .replace(/\n{2,}/g, '\n') // звести мультипереноси до одного
+    .trim();
+
+const buildDescription = (item) => {
+  const lines = [
+    item.clubs?.name,
+    `✅ ${item.location}`,
+    normalizeText(item.description).replace(/\n/g, '<br/>'),
+    `#️⃣ ${item.clubs?.media}`
+  ].filter(Boolean);
+
+  // Єдиний спосіб переносу — <br/>, без \n усередині CDATA
+  return lines.join('<br/>');
+};
+
 export default async function handler(req, res) {
   const { data, error } = await supabase
     .from('stickers')
@@ -17,32 +42,28 @@ export default async function handler(req, res) {
     return;
   }
 
-  const rssItems = data
-    .map((item) => `
-      <item>
-        <title>${item.clubs.name}</title>
-        <description><![CDATA[
-          ${item.clubs.name}<br/>
-          ✅ ${item.location}<br/>
-          ${item.description}<br/>
-          #️⃣ ${item.clubs.media}
-        ]]></description>
-        <pubDate>${new Date(item.created_at).toUTCString()}</pubDate>
-        <guid>${item.id}</guid>
-        <enclosure url="${item.image_url}" type="image/jpeg" />
-      </item>
-    `)
-    .join('');
+  const rssItems = data.map((item) => {
+    const title = escapeXml(item.clubs?.name || '');
+    const desc = buildDescription(item);
 
-  const rss = `<?xml version="1.0" encoding="UTF-8" ?>
-    <rss version="2.0">
-      <channel>
-        <title>New Stickers</title>
-        <link>https://x.com/StickerHunting</link>
-        <description>Latest football sticker finds</description>
-        ${rssItems}
-      </channel>
-    </rss>`;
+    return `<item>
+<title>${title}</title>
+<description><![CDATA[${desc}]]></description>
+<pubDate>${new Date(item.created_at).toUTCString()}</pubDate>
+<guid>${item.id}</guid>
+<enclosure url="${item.image_url}" type="image/jpeg" />
+</item>`;
+  }).join('');
+
+  const rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+<title>New Stickers</title>
+<link>https://x.com/StickerHunting</link>
+<description>Latest football sticker finds</description>
+${rssItems}
+</channel>
+</rss>`;
 
   res.setHeader('Content-Type', 'application/rss+xml');
   res.status(200).send(rss);
