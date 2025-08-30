@@ -5,15 +5,16 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-// HTML <br/> + LF код — одночасно перенос і в HTML, і в plain text
-const BREAK = '<br/>&#x0A;';
+// Використовуємо лише LF як перенос рядка у plain text
+const BREAK = '\n';
 
 const escapeXml = (str = '') =>
-  str.replace(/&/g, '&amp;')
-     .replace(/</g, '&lt;')
-     .replace(/>/g, '&gt;')
-     .replace(/"/g, '&quot;')
-     .replace(/'/g, '&apos;');
+  String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 
 const normalizeText = (str = '') =>
   String(str)
@@ -25,11 +26,11 @@ const buildDescription = (item) => {
   const lines = [
     item.clubs?.name,
     `✅ ${item.location}`,
-    normalizeText(item.description).replace(/\n/g, BREAK),
+    normalizeText(item.description),
     `#️⃣ ${item.clubs?.media}`
   ].filter(Boolean);
 
-  // об’єднання рядків через універсальний перенос
+  // Об’єднуємо рядки через звичайний перенос (без HTML)
   return lines.join(BREAK);
 };
 
@@ -47,11 +48,11 @@ export default async function handler(req, res) {
 
   const rssItems = data.map((item) => {
     const title = escapeXml(item.clubs?.name || '');
-    const desc = buildDescription(item);
+    const desc = escapeXml(buildDescription(item)); // екрануємо як XML
 
     return `<item>
 <title>${title}</title>
-<description><![CDATA[${desc}]]></description>
+<description>${desc}</description>
 <pubDate>${new Date(item.created_at).toUTCString()}</pubDate>
 <guid>${item.id}</guid>
 <enclosure url="${item.image_url}" type="image/jpeg" />
@@ -68,6 +69,6 @@ ${rssItems}
 </channel>
 </rss>`;
 
-  res.setHeader('Content-Type', 'application/rss+xml');
+  res.setHeader('Content-Type', 'application/rss+xml; charset=utf-8');
   res.status(200).send(rss);
 }
